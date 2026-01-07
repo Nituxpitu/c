@@ -17,9 +17,9 @@ mycursor = mydb.cursor()
 # -------------------- DATABASE FUNCTION --------------------
 def store_data():
     query = """
-    INSERT INTO product
-    (product_id, product_name, brand, catagory, p_rate, s_rate, status)
-    VALUES (NULL, %s, %s, %s, %s, %s, 'Active')
+    INSERT INTO tempo
+    (product_name, brand, catagory, p_rate, s_rate, o_stock, purchase, sales, b_stock,status)
+    VALUES ( %s, %s, %s, %s, %s, %s, %s, %s, %s,'Active')
     """
 
     values = (
@@ -28,12 +28,22 @@ def store_data():
         entry4.get(),
         entry5.get(),
         entry6.get(),
+        entry7.get(),
+        entry8.get(),
+        entry9.get(),
+        entry10.get()
     )
 
     mycursor.execute(query, values)
     mydb.commit()
-
     product_id = mycursor.lastrowid
+    mycursor.execute("INSERT INTO product (product_name, brand, catagory, p_rate, s_rate, Status) select distinct product_name, brand, catagory, p_rate, s_rate, status FROM tempo WHERE product_name NOT IN (SELECT product_name FROM product)")
+    
+    mycursor.execute("INSERT INTO stock (product_id, O_stock, purchase, sales, b_stock) select p.product_id, t.O_stock, t.purchase, t.sales, t.b_stock FROM tempo t JOIN product p ON t.product_name = p.product_name")
+    mydb.commit()
+   
+    mycursor.execute("TRUNCATE TABLE tempo")
+    
 
     messagebox.showinfo(
         "Success",
@@ -94,12 +104,20 @@ entry2.pack()
 
 label3 = kt.Label(window, text="Brand", font=("Arial", 16))
 label3.pack()
-entry3 = kt.Entry(window)
+entry3 = ttk.Combobox(
+    window,
+    values=["hp", "oppo", "earthonic"],
+    state="readonly"
+)
 entry3.pack()
 
 label4 = kt.Label(window, text="Category", font=("Arial", 16))
 label4.pack()
-entry4 = kt.Entry(window)
+entry4 = ttk.Combobox(
+    window,
+    values=["laptop", "mobile", "TV"],
+    state="readonly"
+)
 entry4.pack()
 
 label5 = kt.Label(window, text="PRate", font=("Arial", 16))
@@ -112,22 +130,48 @@ label6.pack()
 entry6 = kt.Entry(window)
 entry6.pack()
 
+label7=kt.Label(window,text="Opening stock",font=("Arial",16))
+label7.pack()
+entry7=kt.Entry(window)
+entry7.pack()
 
+label8=kt.Label(window,text="Purchase",font=("Arial",16))
+label8.pack()
+entry8=kt.Entry(window)
+entry8.pack()
+
+label9=kt.Label(window,text="sales",font=("Arial",16))
+label9.pack()
+entry9=kt.Entry(window)
+entry9.pack()
+
+label10=kt.Label(window,text="Balance stock",font=("Arial",16))
+label10.pack()
+entry10=kt.Entry(window)
+entry10.pack()
 # -------------------- VIEW TABLE --------------------
 def view_table():
-    
     view_win = kt.Toplevel(window)
     view_win.title("Stock Table")
-    view_win.geometry("700x500")
+    view_win.geometry("750x500")
 
     search_frame = kt.Frame(view_win)
     search_frame.pack(pady=10)
 
     kt.Label(search_frame, text="Search: ").grid(row=0, column=0)
+
     search_entry = kt.Entry(search_frame, width=30)
     search_entry.grid(row=0, column=1, padx=5)
 
+    brand_dropdown = ttk.Combobox(
+        search_frame,
+        values=["hp", "oppo", "earthonic"],
+        state="readonly",
+        width=28
+    )
+
     kt.Label(search_frame, text="By: ").grid(row=0, column=2)
+
     search_type = ttk.Combobox(
         search_frame,
         values=["product_name", "brand"],
@@ -141,7 +185,7 @@ def view_table():
         view_win,
         columns=("product_id","product_name","brand","catagory","p_rate","s_rate","status"),
         show='headings',
-        selectmode="none"   # 🔥 prevents row selection
+        selectmode="none"
     )
 
     headings = ["ID","Product Name","Brand","Category","P Rate","S Rate","Status"]
@@ -150,12 +194,7 @@ def view_table():
         table.column(col, width=100, anchor="center")
 
     table.pack(fill="both", expand=True)
-
-    # 🔥 SINGLE CLICK on STATUS column only
-    table.bind(
-        "<Button-1>",
-        lambda event: toggle_status_from_table(event, table)
-    )
+    table.bind("<Button-1>", lambda event: toggle_status_from_table(event, table))
 
     def load_data(query=None, value=None):
         for row in table.get_children():
@@ -166,28 +205,33 @@ def view_table():
         else:
             mycursor.execute(query, (value,))
 
-        rows = mycursor.fetchall()
-
-        for row in rows:
+        for row in mycursor.fetchall():
             status_symbol = "✔" if row[6] == "Active" else "❌"
             table.insert("", "end", values=(
                 row[0], row[1], row[2], row[3], row[4], row[5], status_symbol
             ))
 
     def search():
-        text = search_entry.get()
+        col = search_type.get()
+        text = brand_dropdown.get() if col == "brand" else search_entry.get()
+
         if text == "":
             load_data()
             return
 
-        col = search_type.get()
-        query = f"SELECT * FROM product WHERE {col} LIKE %s"
-        value = "%" + text + "%"
-        load_data(query, value)
+        load_data(f"SELECT * FROM product WHERE {col} LIKE %s", "%" + text + "%")
 
-    search_btn = kt.Button(search_frame, text="Search", command=search)
-    search_btn.grid(row=0, column=4, padx=5)
+    def change_input(event):
+        if search_type.get() == "brand":
+            search_entry.grid_remove()
+            brand_dropdown.grid(row=0, column=1, padx=5)
+        else:
+            brand_dropdown.grid_remove()
+            search_entry.grid(row=0, column=1, padx=5)
 
+    search_type.bind("<<ComboboxSelected>>", change_input)
+
+    kt.Button(search_frame, text="Search", command=search).grid(row=0, column=4, padx=5)
     load_data()
 
 
@@ -202,9 +246,9 @@ def upload():
         return
 
     query = """
-    INSERT INTO product
-    (product_name, brand, catagory, p_rate, s_rate, status)
-    VALUES (%s, %s, %s, %s, %s, 'Active')
+    INSERT INTO tempo
+    (product_name, brand, catagory, p_rate, s_rate,o_stock,purchase,sales,b_stock, status)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'Active')
     """
 
     with open(file_path, 'r') as csvfile:
@@ -215,11 +259,21 @@ def upload():
                 row['brand'],
                 row['category'],
                 row['prate'],
-                row['srate']
+                row['srate'],
+                row['o_stock'],
+                row['purchase'],
+                row['sales'],
+                row['b_stock']
             )
             mycursor.execute(query, values)
 
     mydb.commit()
+    mycursor.execute("INSERT INTO product (product_name, brand, catagory, p_rate, s_rate, Status) select distinct product_name, brand, catagory, p_rate, s_rate, status FROM tempo WHERE product_name NOT IN (SELECT product_name FROM product)")
+    
+    mycursor.execute("INSERT INTO stock (product_id, O_stock, purchase, sales, b_stock) select p.product_id, t.O_stock, t.purchase, t.sales, t.b_stock FROM tempo t JOIN product p ON t.product_name = p.product_name")
+    mydb.commit()
+   
+    mycursor.execute("TRUNCATE TABLE tempo")
     messagebox.showinfo("Success", "CSV Imported Successfully!")
 
 

@@ -1,13 +1,13 @@
-product_name,brand,category,prate,srate
-f31,oppo,mobile,20000,22222
-reno 14,oppo,mobile,12000,15000
-reno 15,oppo,mobile,30000,369854
-f21,oppo,mobile,54123,60000
-victus,hp,laptop,1000000,150000
-fac587u,hp,laptop,50000,55000
-omibook ,hp,laptop,45000,90000
-f305ttu,hp,laptop,33000,45000
-45 inch TV,earthonic,TV,22000,25000
-43 inch TV,earthonic,TV,30000,40000
-55 inch TV,earthonic,TV,100000,120000
-43 inch TV,philips,TV,46000,50000
+product_name,brand,category,prate,srate,status,o_stock,purchase,sales,b_stock
+f31,oppo,mobile,20000,22222,Active,10,10,1,5
+reno14,oppo,mobile,12000,15000,Active,20,5,2,3
+reno 15,oppo,mobile,30000,369854,Active,30,2,3,4
+f21,oppo,mobile,54123,60000,Active,41,11,5,8
+victus,hp,laptop,1000000,150000,Active,15,3,4,9
+fac587u,hp,laptop,50000,55000,Active,65,6,6,47
+omibook ,hp,laptop,45000,90000,Active,44,4,8,5
+f305ttu,hp,laptop,33000,45000,Active,2,9,9,46
+45 inch TV,earthonic,TV,22000,25000,Active,0,22,2,2
+43 inch TV,earthonic,TV,30000,40000,Active,30,0,10,21
+55 inch TV,earthonic,TV,100000,120000,Active,25,3,44,32
+43 inch TV,philips,TV,46000,50000,Active,6,11,24,45

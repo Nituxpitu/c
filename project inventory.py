@@ -290,6 +290,8 @@ def upload():
             mycursor.execute(query, values)
 
     mydb.commit()
+    
+    
     messagebox.showinfo("Success", "CSV Imported Successfully!")
 
 
