@@ -3,7 +3,10 @@ import mysql.connector
 import tkinter as kt
 from tkinter import filedialog, messagebox, ttk
 import csv as c
+import datetime
+from tkinter import simpledialog
 
+a=datetime.date.today()
 mydb = mysql.connector.connect(
         host="localhost",
         user="root",
@@ -11,16 +14,31 @@ mydb = mysql.connector.connect(
         database="inventory"
     )
 
-mycursor = mydb.cursor()
-
+mycursor = mydb.cursor(buffered=True)
 
 # -------------------- DATABASE FUNCTION --------------------
+def clear_entries():
+    # For Entry widgets
+    entry2.delete(0, kt.END)
+    entry5.delete(0, kt.END)
+    entry6.delete(0, kt.END)
+    entry7.delete(0, kt.END)
+    entry8.delete(0, kt.END)
+    entry9.delete(0, kt.END)
+    entry10.delete(0, kt.END)
+    
+    # For Comboboxes (Brand and Category)
+    entry3.set('') 
+    entry4.set('')
+
+
 def store_data():
     query = """
     INSERT INTO tempo
-    (product_name, brand, catagory, p_rate, s_rate, o_stock, purchase, sales, b_stock,status)
-    VALUES ( %s, %s, %s, %s, %s, %s, %s, %s, %s,'Active')
+    (product_name, brand, catagory, p_rate, s_rate, o_stock, purchase, sales, b_stock, status, s_date)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'Active', %s)
     """
+    # ... rest of your values tuple ...
 
     values = (
         entry2.get(),
@@ -31,7 +49,8 @@ def store_data():
         entry7.get(),
         entry8.get(),
         entry9.get(),
-        entry10.get()
+        entry10.get(),
+        a
     )
 
     mycursor.execute(query, values)
@@ -39,7 +58,7 @@ def store_data():
     product_id = mycursor.lastrowid
     mycursor.execute("INSERT INTO product (product_name, brand, catagory, p_rate, s_rate, Status) select distinct product_name, brand, catagory, p_rate, s_rate, status FROM tempo WHERE product_name NOT IN (SELECT product_name FROM product)")
     
-    mycursor.execute("INSERT INTO stock (product_id, O_stock, purchase, sales, b_stock) select p.product_id, t.O_stock, t.purchase, t.sales, t.b_stock FROM tempo t JOIN product p ON t.product_name = p.product_name")
+    mycursor.execute("INSERT INTO stock (product_id, O_stock, purchase, sales, b_stock,s_date) select p.product_id, t.O_stock, t.purchase, t.sales, t.b_stock,t.s_date FROM tempo t JOIN product p ON t.product_name = p.product_name")
     mydb.commit()
    
     mycursor.execute("TRUNCATE TABLE tempo")
@@ -49,7 +68,7 @@ def store_data():
         "Success",
         f"Product Stored Successfully\nGenerated Product ID: {product_id}"
     )
-
+    clear_entries()
 
 # -------------------- SINGLE CLICK STATUS TOGGLE (✔ / ❌) --------------------
 def toggle_status_from_table(event, table):
@@ -80,14 +99,85 @@ def toggle_status_from_table(event, table):
 
     table.item(row_id, values=(
         row[0], row[1], row[2], row[3], row[4], row[5], new_symbol
+
     ))
 
+def purchase_new(event, table):
+    row = table.identify_row(event.y)
+    column = table.identify_column(event.x)
+
+    # Purchase column is #4 in your stock table
+    if not row or column != "#4":
+        return
+
+    r = table.item(row)["values"]
+    product_name = r[0]
+    bal = r[4]
+
+    mycursor.execute(
+        "SELECT product_id FROM product WHERE product_name=%s",
+        (product_name,)
+    )
+    result = mycursor.fetchone()
+    if not result:
+        return
+
+    p_id = result[0]
+
+    new_purchase = simpledialog.askinteger(
+        "Update Stock",
+        f"Enter new purchase for {product_name}:"
+    )
+
+    if new_purchase is None:
+        return
+
+    new_balance = bal + new_purchase
+
+    mycursor.execute(
+        "UPDATE stock SET purchase=%s, b_stock=%s WHERE product_id=%s",
+        (new_purchase, new_balance, p_id)
+    )
+    mydb.commit()
+
+    # ✅ REFRESH ONLY THE CURRENT TABLE
+    table.delete(*table.get_children())
+
+    # Reload data for currently selected date
+    selected_date = r[6]
+    for widget in table.master.winfo_children():
+        if isinstance(widget, ttk.Combobox):
+            selected_date = widget.get()
+            break
+
+    if selected_date:
+        mycursor.execute("""
+            SELECT p.product_name, p.brand, s.O_stock, s.purchase, s.b_stock, p.p_rate, s.s_date
+            FROM product p
+            JOIN stock s ON p.product_id = s.product_id
+            WHERE s.s_date = %s
+        """, (selected_date,))
+    else:
+        mycursor.execute("""
+            SELECT p.product_name, p.brand, s.O_stock, s.purchase, s.b_stock, p.p_rate, s.s_date
+            FROM product p
+            JOIN stock s ON p.product_id = s.product_id
+        """)
+
+    for row in mycursor.fetchall():
+        table.insert("", "end", values=row)
+
+    
 
 # -------------------- MAIN WINDOW --------------------
 window = kt.Tk()
 window.geometry("420x420")
 window.title("Inventory Manager")
 window.config(background="cyan")
+container=kt.Frame(window)
+container.pack()
+
+
 
 icon = kt.PhotoImage(file="logo.png")
 window.iconphoto(True, icon)
@@ -152,7 +242,7 @@ entry10.pack()
 # -------------------- VIEW TABLE --------------------
 def view_table():
     view_win = kt.Toplevel(window)
-    view_win.title("Stock Table")
+    view_win.title("Product Table")
     view_win.geometry("750x500")
 
     search_frame = kt.Frame(view_win)
@@ -195,6 +285,7 @@ def view_table():
 
     table.pack(fill="both", expand=True)
     table.bind("<Button-1>", lambda event: toggle_status_from_table(event, table))
+    
 
     def load_data(query=None, value=None):
         for row in table.get_children():
@@ -247,8 +338,8 @@ def upload():
 
     query = """
     INSERT INTO tempo
-    (product_name, brand, catagory, p_rate, s_rate,o_stock,purchase,sales,b_stock, status)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'Active')
+    (product_name, brand, catagory, p_rate, s_rate,o_stock,purchase,sales,b_stock, status,s_date)
+    VALUES  ( %s, %s, %s, %s, %s, %s, %s, %s, %s,'Active',%s)
     """
 
     with open(file_path, 'r') as csvfile:
@@ -263,20 +354,118 @@ def upload():
                 row['o_stock'],
                 row['purchase'],
                 row['sales'],
-                row['b_stock']
+                row['b_stock'],
+                a
+                
             )
             mycursor.execute(query, values)
 
     mydb.commit()
     mycursor.execute("INSERT INTO product (product_name, brand, catagory, p_rate, s_rate, Status) select distinct product_name, brand, catagory, p_rate, s_rate, status FROM tempo WHERE product_name NOT IN (SELECT product_name FROM product)")
     
-    mycursor.execute("INSERT INTO stock (product_id, O_stock, purchase, sales, b_stock) select p.product_id, t.O_stock, t.purchase, t.sales, t.b_stock FROM tempo t JOIN product p ON t.product_name = p.product_name")
+    mycursor.execute("INSERT INTO stock (product_id, O_stock, purchase, sales, b_stock,s_date) select p.product_id, t.O_stock, t.purchase, t.sales, t.b_stock, t.s_date FROM tempo t JOIN product p ON t.product_name = p.product_name")
     mydb.commit()
    
     mycursor.execute("TRUNCATE TABLE tempo")
     messagebox.showinfo("Success", "CSV Imported Successfully!")
+def change_data():
+    try:
+        # Check if today's stock already exists to avoid duplicates
+        mycursor.execute("SELECT COUNT(*) FROM stock WHERE s_date = %s", (a,))
+        if mycursor.fetchone()[0] > 0:
+            print("Today's stock is already initialized.")
+            return
 
+        # Carry forward yesterday's balance to today's opening stock
+        query = """
+            INSERT INTO stock (product_id, o_stock, purchase, sales, b_stock, s_date) 
+            SELECT product_id, b_stock, 0, 0, b_stock, CURDATE() 
+            FROM stock 
+            WHERE s_date = CURDATE() - INTERVAL 1 DAY
+        """
+        mycursor.execute(query)
+        mydb.commit()
+        print("Stock carried forward successfully.")
+    except Exception as e:
+        print(f"Error in change_data: {e}")
+def view_table_stock():
+    # 1. Create the Full-Screen Frame
+    view_win = kt.Frame(window, bg="white")
+    view_win.place(x=0, y=0, relwidth=1, relheight=1)
 
+    # 2. Header Navbar
+    header_frame = kt.Frame(view_win, height=60)
+    header_frame.pack(side="top", fill="x")
+
+    # Back Button
+    kt.Button(header_frame, text="← Back", command=view_win.destroy, 
+               font=("Arial", 10, "bold"), bd=0).pack(side="left", padx=10, pady=10)
+
+    # Date Filter Label and Combobox
+    kt.Label(header_frame, text="Select Date:",font=("Arial", 11)).pack(side="left", padx=(20, 5))
+    
+    date_filter = ttk.Combobox(header_frame, state="readonly", width=15)
+    date_filter.pack(side="left", padx=5)
+    
+    # 3. Table Setup
+    columns = ("product_name", "brand", "o_stock", "purchase", "b_stock", "p_rate", "s_date")
+    tree = ttk.Treeview(view_win, columns=columns, show="headings")
+
+    for col in columns:
+        tree.heading(col, text=col.replace('_', ' ').upper())
+        tree.column(col, width=100, anchor="center")
+    tree.bind("<Button-1>", lambda revent : purchase_new(revent,tree))
+
+    tree.pack(fill="both", expand=True)
+    
+    # --- THE FILTER LOGIC FUNCTION ---
+    def load_filtered_data(event=None):
+        # Clear the old table data
+        for item in tree.get_children():
+            tree.delete(item)
+            
+        selected_date = date_filter.get()
+        
+        try:
+            # JOIN query filtered by the date selected in the dropdown
+            query = """
+                SELECT p.product_name, p.brand, s.O_stock, s.purchase, s.b_stock, p.p_rate, s.s_date
+                FROM product p
+                JOIN stock s ON p.product_id = s.product_id
+                WHERE s.s_date = %s
+            """
+            mycursor.execute(query, (selected_date,))
+            rows = mycursor.fetchall()
+
+            for row in rows:
+                tree.insert("", "end", values=row)
+        except Exception as e:
+            print(f"Error filtering data: {e}")
+
+    # --- POPULATE THE DATE DROPDOWN ---
+    try:
+        # Get unique dates from the stock table
+        mycursor.execute("SELECT DISTINCT s_date FROM stock ORDER BY s_date DESC")
+        available_dates = [str(date[0]) for date in mycursor.fetchall()]
+        
+        if available_dates:
+            date_filter['values'] = available_dates
+            date_filter.set(available_dates[0]) # Set the most recent date as default
+            load_filtered_data() # Load data for the default date immediately
+        else:
+            messagebox.showinfo("Info", "No stock records found yet.")
+
+    except Exception as e:
+        print(f"Error fetching dates: {e}")
+
+    # Bind the dropdown to the filter function
+    date_filter.bind("<<ComboboxSelected>>", load_filtered_data)
+    
+    
+def master_function():
+    change_data()
+    view_table_stock()  
+    
 # -------------------- BUTTONS --------------------
 button = kt.Button(window, text="Click Me for storing", command=store_data)
 button.pack(pady=10)
@@ -284,7 +473,8 @@ button.pack(pady=10)
 button2 = kt.Button(window, text='import csv file here', command=upload)
 button2.place(x=0, y=0)
 
-button3 = kt.Button(window, text="view stock", command=view_table)
+button3 = kt.Button(window, text="view product", command=view_table)
 button3.pack()
-
+button17=kt.Button(window,text='View stock',command=master_function)
+button17.place(x=1200,y=0)
 window.mainloop()
