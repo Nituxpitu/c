@@ -128,9 +128,9 @@ container.grid_columnconfigure(0, weight=1)
 
 product_frame=kt.Frame(container)
 dash_frame=kt.Frame(container)
+order_frame=kt.Frame(container)
 
-
-for f in (dash_frame, product_frame):
+for f in (dash_frame,order_frame, product_frame):
     f.grid(row=0, column=0, sticky="nsew")
 
 
@@ -268,24 +268,36 @@ def upload():
     messagebox.showinfo("Success", "CSV Imported Successfully!")
 def change_data():
     try:
-        # Check if today's stock already exists to avoid duplicates
-        mycursor.execute("SELECT COUNT(*) FROM stock WHERE s_date = %s", (a,))
+        # 1. Get the current date from the system
+        today = datetime.date.today()
+
+        # 2. Check if today's records already exist
+        mycursor.execute("SELECT COUNT(*) FROM stock WHERE s_date = %s", (today,))
         if mycursor.fetchone()[0] > 0:
-            print("Today's stock is already initialized.")
+            print(f"Records for {today} already exist.")
             return
 
-        # Carry forward yesterday's balance to today's opening stock
-        query = """
-            INSERT INTO stock (product_id, o_stock, purchase, sales, b_stock, s_date) 
-            SELECT product_id, b_stock, 0, 0, b_stock, CURDATE() 
-            FROM stock 
-            WHERE s_date = CURDATE() - INTERVAL 1 DAY
-        """
-        mycursor.execute(query)
-        mydb.commit()
-        print("Stock carried forward successfully.")
+        # 3. Find the most recent date in the database
+        mycursor.execute("SELECT MAX(s_date) FROM stock")
+        last_recorded_date = mycursor.fetchone()[0]
+
+        if last_recorded_date:
+            # 4. Carry forward the 'b_stock' (Balance) from the last date 
+            # to the 'o_stock' (Opening) of today.
+            query = """
+                INSERT INTO stock (product_id, o_stock, purchase, sales, b_stock, s_date) 
+                SELECT product_id, b_stock, 0, 0, b_stock, %s 
+                FROM stock 
+                WHERE s_date = %s
+            """
+            mycursor.execute(query, (today, last_recorded_date))
+            mydb.commit()
+            print(f"Successfully carried stock forward from {last_recorded_date} to {today}")
+        else:
+            print("No previous records found to carry forward.")
+
     except Exception as e:
-        print(f"Error in change_data: {e}")
+        print(f"Error updating daily stock: {e}")
 def view_table_stock():
     # 1. Create the Full-Screen Frame
     view_win = kt.Frame(window, bg="white")
@@ -399,6 +411,14 @@ def build_dashboard():
         command=master_function  # change_data + stock page
     ).pack(pady=15)
 
+    kt.Button(
+        dash_frame,
+        text="Orders",
+        width=30,
+        height=2,
+        font=("Arial", 14),
+        command=open_order_frame
+    ).pack(pady=15)
     # Exit Button
     kt.Button(
         dash_frame,
@@ -474,6 +494,7 @@ def pro_frame():
 
     button3 = kt.Button(product_frame, text="view product", command=view_table)
     button3.pack(pady=5)
+
     def store_data():  
         query = """
         INSERT INTO tempo
@@ -523,6 +544,60 @@ def pro_frame():
         entry4.set('')
     button = kt.Button(product_frame, text="Click Me for storing", command=store_data)
     button.pack(pady=10)
+def open_order_frame():
+    # 1. Clear and Show Frame
+    for widget in order_frame.winfo_children():
+        widget.destroy()
+    show_page(order_frame)
+
+    # --- THE UPDATE FUNCTION (Crucial Change) ---
+    def update_products(event):
+        selected_brand = entry11.get() # Get currently selected company
+        
+        # Run query based on selection
+        mycursor.execute("SELECT product_name FROM product WHERE brand=%s", (selected_brand,))
+        pro = mycursor.fetchall()
+        
+        # Build the list of names
+        pst = [j[0] for j in pro]
+        
+        # Update the values of the second combobox
+        entry12['values'] = pst
+        entry12.set('') # Clear previous product choice
+    def fetch_stock(event):
+        z=entry12.get()
+        mycursor.execute("select product_id from product where product_name=%s",(z,))
+        p=mycursor.fetchone()
+        q=p[0]
+        mycursor.execute("SELECT b_stock FROM stock WHERE product_id=%s AND s_date=%s", (q, a))
+        l=mycursor.fetchone()
+        m=l[0]
+        stok.config(text=f'Stock-{m}')
+    # --- UI ELEMENTS ---
+    kt.Button(order_frame, text="<--Back", command=lambda: show_page(dash_frame)).place(x=10, y=10)
+    
+    # Company Selection
+    kt.Label(order_frame, font=("Arial", 14), text="Company").place(x=20, y=50)
+    entry11 = ttk.Combobox(order_frame, values=["Oppo", "Earthonic", "HP"], state="readonly",width=50)
+    entry11.place(x=120, y=50)
+
+    # Product Selection (Start with empty values)
+    kt.Label(order_frame, text="Products", font=("Arial", 14)).place(x=20, y=90)
+    entry12 = ttk.Combobox(order_frame, values=[], state="readonly",width=50)
+    entry12.place(x=120, y=90)
+
+    kt.Label(order_frame,text="Quantity",font=("Arial", 14)).place(x=600,y=100)
+    entry13=kt.Entry(order_frame,width=20).place(x=680,y=100)
+
+    stok=kt.Label(order_frame,text="Stock-",font=("Arial", 14))
+    stok.place(x=600,y=60)
+    
+    kt.Button(order_frame,text="Add to cart",font=('Archivo Black',20),background='red',width=20).place(x=900,y=50)
+    # --- THE BINDING ---
+    # This connects the company box to the function above
+    entry11.bind("<<ComboboxSelected>>", update_products)
+    entry12.bind("<<ComboboxSelected>>", fetch_stock)
+    
 def master_function():
     change_data()
     view_table_stock()  
