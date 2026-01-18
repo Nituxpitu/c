@@ -604,6 +604,7 @@ def master_function():
 def show_page(frame):
     frame.tkraise()
 
+
 # -------------------- START APPLICATION --------------------
 
 build_dashboard()          # build dashboard once
