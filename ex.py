@@ -427,6 +427,9 @@ def view_table_stock():
         search_text = name_search.get().strip()
         
         try:
+            # Base query with custom sorting: 
+            # (s.b_stock = 0) returns 1 if true, 0 if false. 
+            # Sorting by this first puts 0s at the end (1 > 0).
             query = """
                 SELECT p.brand, p.product_name, s.O_stock, s.purchase, s.sales, s.b_stock, p.p_rate, p.s_rate, s.s_date
                 FROM product p
@@ -443,22 +446,17 @@ def view_table_stock():
                 query += " AND p.product_name LIKE %s"
                 params.append(f"%{search_text}%")
 
+            # --- THE KEY CHANGE: SORTING LOGIC ---
+            # This puts b_stock > 0 items first, then b_stock = 0 items last.
+            query += " ORDER BY (s.b_stock = 0) ASC, p.product_name ASC"
+
             mycursor.execute(query, tuple(params))
-            for row in mycursor.fetchall():
+            rows = mycursor.fetchall()
+
+            for row in rows:
                 tree.insert("", "end", values=row)
         except Exception as e:
             print(f"Error filtering data: {e}")
-
-    # --- POPULATE INITIAL DATA ---
-    try:
-        mycursor.execute("SELECT DISTINCT s_date FROM stock ORDER BY s_date DESC")
-        available_dates = [str(date[0]) for date in mycursor.fetchall()]
-        if available_dates:
-            date_filter['values'] = available_dates
-            date_filter.set(available_dates[0])
-            load_filtered_data()
-    except Exception as e:
-        print(f"Error fetching dates: {e}")
 
     # Bindings for interactive search
     tree.bind("<Button-1>", lambda revent: purchase_new(revent, tree))
