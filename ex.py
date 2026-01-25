@@ -169,16 +169,19 @@ def view_table():
     kt.Label(sidebar, text="Nitya Sales", font=("Arial", 16, "bold"), 
              bg=sidebar_color, fg="white", pady=25).pack()
 
+    # Inside your order_page_frame() and other page functions:
     nav_btns = [
-        ("🏠 Dashboard", lambda: [build_dashboard(), show_page(dash_frame)]),
-        ("📦 Products", view_table),
-        ("📊 Inventory", master_function),
-        ("🛒 Orders", order_page_frame),
-        ("❌ Exit", window.destroy)
-    ]
+    ("🏠 Dashboard", lambda: [build_dashboard(), show_page(dash_frame)]),
+    ("📦 Products", view_table), 
+    ("📊 Inventory", master_function),
+    ("🛒 Orders", order_page_frame), 
+    ("🧾 Billings", billing_page_frame),
+    ("📈 Reports", report_page_frame), # Add this
+    ("❌ Exit", window.destroy)
+]
 
     for text, cmd in nav_btns:
-        kt.Button(sidebar, text=text, font=("Arial", 11), bg=sidebar_color, 
+        kt.Button(sidebar, text=text, font=("Arial", 16), bg=sidebar_color, 
                   fg="white", bd=0, activebackground=accent_blue, 
                   activeforeground="white", anchor="w", padx=25,
                   command=cmd).pack(fill="x", pady=5)
@@ -348,16 +351,18 @@ def view_table_stock():
     kt.Label(sidebar, text="Nitya Sales", font=("Arial", 16, "bold"), 
              bg=sidebar_color, fg="white", pady=25).pack()
 
+    # Inside your order_page_frame() and other page functions:
     nav_btns = [
-        ("🏠 Dashboard", lambda: [build_dashboard(), show_page(dash_frame)]),
-        ("📦 Products", view_table),
-        ("📊 Inventory", master_function),
-        ("🛒 Orders", order_page_frame),
-        ("❌ Exit", window.destroy)
-    ]
-
+    ("🏠 Dashboard", lambda: [build_dashboard(), show_page(dash_frame)]),
+    ("📦 Products", view_table), 
+    ("📊 Inventory", master_function),
+    ("🛒 Orders", order_page_frame), 
+    ("🧾 Billings", billing_page_frame),
+    ("📈 Reports", report_page_frame), # Add this
+    ("❌ Exit", window.destroy)
+]
     for text, cmd in nav_btns:
-        kt.Button(sidebar, text=text, font=("Arial", 11), bg=sidebar_color, 
+        kt.Button(sidebar, text=text, font=("Arial", 16), bg=sidebar_color, 
                   fg="white", bd=0, activebackground=accent_blue, 
                   activeforeground="white", anchor="w", padx=25,
                   command=cmd).pack(fill="x", pady=5)
@@ -427,9 +432,6 @@ def view_table_stock():
         search_text = name_search.get().strip()
         
         try:
-            # Base query with custom sorting: 
-            # (s.b_stock = 0) returns 1 if true, 0 if false. 
-            # Sorting by this first puts 0s at the end (1 > 0).
             query = """
                 SELECT p.brand, p.product_name, s.O_stock, s.purchase, s.sales, s.b_stock, p.p_rate, p.s_rate, s.s_date
                 FROM product p
@@ -446,17 +448,22 @@ def view_table_stock():
                 query += " AND p.product_name LIKE %s"
                 params.append(f"%{search_text}%")
 
-            # --- THE KEY CHANGE: SORTING LOGIC ---
-            # This puts b_stock > 0 items first, then b_stock = 0 items last.
-            query += " ORDER BY (s.b_stock = 0) ASC, p.product_name ASC"
-
             mycursor.execute(query, tuple(params))
-            rows = mycursor.fetchall()
-
-            for row in rows:
+            for row in mycursor.fetchall():
                 tree.insert("", "end", values=row)
         except Exception as e:
             print(f"Error filtering data: {e}")
+
+    # --- POPULATE INITIAL DATA ---
+    try:
+        mycursor.execute("SELECT DISTINCT s_date FROM stock ORDER BY s_date DESC")
+        available_dates = [str(date[0]) for date in mycursor.fetchall()]
+        if available_dates:
+            date_filter['values'] = available_dates
+            date_filter.set(available_dates[0])
+            load_filtered_data()
+    except Exception as e:
+        print(f"Error fetching dates: {e}")
 
     # Bindings for interactive search
     tree.bind("<Button-1>", lambda revent: purchase_new(revent, tree))
@@ -473,31 +480,34 @@ def build_dashboard(target_date=None):
     view_date = target_date if target_date else str(a)
 
     # --- MODERN THEME COLORS ---
-    bg_main = "#f0f4f8"       # Light blue-grey background
-    sidebar_color = "#1a365d" # Dark navy blue sidebar
-    card_color = "#ffffff"    # White cards
-    accent_blue = "#2b6cb0"   # Medium blue for accents
-    text_dark = "#2d3748"     # Dark grey text
+    bg_main = "#f0f4f8"
+    sidebar_color = "#1a365d"
+    card_color = "#ffffff"
+    accent_blue = "#2b6cb0"
+    text_dark = "#2d3748"
 
     dash_frame.config(bg=bg_main)
 
-    # 1. SIDEBAR (Navigation Area)
+    # 1. SIDEBAR
     sidebar = kt.Frame(dash_frame, bg=sidebar_color, width=220)
     sidebar.pack(side="left", fill="y")
 
-    kt.Label(sidebar, text="Nitya Sales", font=("Arial", 16, "bold"), 
+    kt.Label(sidebar, text="Nitya Sales", font=("Arial", 18, "bold"), 
              bg=sidebar_color, fg="white", pady=25).pack()
 
+    # Inside your order_page_frame() and other page functions:
     nav_btns = [
-        ("📦 Products", view_table),
-        ("🤝 Dealers", customer),
-        ("📊 Inventory", master_function),
-        ("🛒 Orders", order_page_frame),
-        ("❌ Exit", window.destroy)
-    ]
+    ("🏠 Dashboard", lambda: [build_dashboard(), show_page(dash_frame)]),
+    ("📦 Products", view_table), 
+    ("📊 Inventory", master_function),
+    ("🛒 Orders", order_page_frame), 
+    ("🧾 Billings", billing_page_frame),
+    ("📈 Reports", report_page_frame), # Add this
+    ("❌ Exit", window.destroy)
+]
 
     for text, cmd in nav_btns:
-        kt.Button(sidebar, text=text, font=("Arial", 11), bg=sidebar_color, 
+        kt.Button(sidebar, text=text, font=("Arial", 16), bg=sidebar_color, 
                   fg="white", bd=0, activebackground=accent_blue, 
                   activeforeground="white", anchor="w", padx=25,
                   command=cmd).pack(fill="x", pady=5)
@@ -506,38 +516,37 @@ def build_dashboard(target_date=None):
     content = kt.Frame(dash_frame, bg=bg_main, padx=30, pady=25)
     content.pack(side="right", fill="both", expand=True)
 
-    # Header Row with Title and Date Filter
+    # Header Row
     header_row = kt.Frame(content, bg=bg_main)
     header_row.pack(fill="x", pady=(0, 25))
 
     kt.Label(header_row, text="Inventory Overview", font=("Arial", 22, "bold"), 
              bg=bg_main, fg=text_dark).pack(side="left")
 
-    # Date Filter Dropdown
+    # Date Filter
     date_filter = ttk.Combobox(header_row, state="readonly", width=15)
     date_filter.pack(side="right", padx=10)
     
     kt.Label(header_row, text="Filter Date:", font=("Arial", 10), 
              bg=bg_main, fg=text_dark).pack(side="right")
 
-    # Fetch unique dates from database for the filter
     mycursor.execute("SELECT DISTINCT s_date FROM stock ORDER BY s_date DESC")
     available_dates = [str(d[0]) for d in mycursor.fetchall()]
     date_filter['values'] = available_dates
     date_filter.set(view_date)
 
-    # Auto-refresh when a new date is selected
     def on_date_change(event):
         build_dashboard(target_date=date_filter.get())
 
     date_filter.bind("<<ComboboxSelected>>", on_date_change)
 
-    # --- DATABASE CALCULATIONS FOR THE SELECTED DATE ---
+    # --- DATABASE CALCULATIONS ---
+
     # 1. Total Units Sold
     mycursor.execute("SELECT SUM(sales) FROM stock WHERE s_date = %s", (view_date,))
     sold_qty = mycursor.fetchone()[0] or 0
 
-    # 2. Total Sales Value (Sold Quantity * Sales Rate)
+    # 2. Total Sales Value
     mycursor.execute("""
         SELECT SUM(s.sales * p.s_rate) 
         FROM stock s JOIN product p ON s.product_id = p.product_id 
@@ -545,11 +554,11 @@ def build_dashboard(target_date=None):
     """, (view_date,))
     sales_val = mycursor.fetchone()[0] or 0
 
-    # 3. Total Available Physical Units
+    # 3. Total Available Stock
     mycursor.execute("SELECT SUM(b_stock) FROM stock WHERE s_date = %s", (view_date,))
     stock_qty = mycursor.fetchone()[0] or 0
 
-    # 4. Total Stock Investment Value (Available Units * Purchase Rate)
+    # 4. Total Stock Value
     mycursor.execute("""
         SELECT SUM(s.b_stock * p.p_rate) 
         FROM stock s JOIN product p ON s.product_id = p.product_id 
@@ -557,30 +566,57 @@ def build_dashboard(target_date=None):
     """, (view_date,))
     stock_val = mycursor.fetchone()[0] or 0
 
+    # 5. 🔥 TOTAL NUMBER OF ORDERS FOR SELECTED DATE (NEW)
+    mycursor.execute("SELECT COUNT(*) FROM orders WHERE order_date = %s", (view_date,))
+    total_orders = mycursor.fetchone()[0] or 0
+
     # --- STATISTICS CARDS DISPLAY ---
     cards_frame = kt.Frame(content, bg=bg_main)
     cards_frame.pack(fill="x")
 
     # Sales Performance Card
-    c1 = kt.Frame(cards_frame, bg=card_color, highlightbackground="#cbd5e0", highlightthickness=1, padx=20, pady=20)
+    c1 = kt.Frame(cards_frame, bg=card_color, highlightbackground="#cbd5e0",
+                  highlightthickness=1, padx=20, pady=20)
     c1.pack(side="left", expand=True, fill="both", padx=(0, 10))
-    kt.Label(c1, text="SALES PERFORMANCE", font=("Arial", 9, "bold"), bg=card_color, fg="#718096").pack(anchor="w")
-    kt.Label(c1, text=f"{sold_qty} Items Sold", font=("Arial", 16, "bold"), bg=card_color, fg=accent_blue).pack(anchor="w", pady=5)
-    kt.Label(c1, text=f"Value: ₹{sales_val:,.2f}", font=("Arial", 11), bg=card_color, fg=text_dark).pack(anchor="w")
+    kt.Label(c1, text="SALES PERFORMANCE", font=("Arial", 9, "bold"),
+             bg=card_color, fg="#718096").pack(anchor="w")
+    kt.Label(c1, text=f"{sold_qty} Items Sold", font=("Arial", 16, "bold"),
+             bg=card_color, fg=accent_blue).pack(anchor="w", pady=5)
+    kt.Label(c1, text=f"Value: ₹{sales_val:,.2f}", font=("Arial", 11),
+             bg=card_color, fg=text_dark).pack(anchor="w")
 
     # Current Inventory Card
-    c2 = kt.Frame(cards_frame, bg=card_color, highlightbackground="#cbd5e0", highlightthickness=1, padx=20, pady=20)
-    c2.pack(side="left", expand=True, fill="both", padx=(10, 0))
-    kt.Label(c2, text="CURRENT INVENTORY", font=("Arial", 9, "bold"), bg=card_color, fg="#718096").pack(anchor="w")
-    kt.Label(c2, text=f"{stock_qty} Units in Stock", font=("Arial", 16, "bold"), bg=card_color, fg=accent_blue).pack(anchor="w", pady=5)
-    kt.Label(c2, text=f"Value: ₹{stock_val:,.2f}", font=("Arial", 11), bg=card_color, fg=text_dark).pack(anchor="w")
+    c2 = kt.Frame(cards_frame, bg=card_color, highlightbackground="#cbd5e0",
+                  highlightthickness=1, padx=20, pady=20)
+    c2.pack(side="left", expand=True, fill="both", padx=(10, 10))
+    kt.Label(c2, text="CURRENT INVENTORY", font=("Arial", 9, "bold"),
+             bg=card_color, fg="#718096").pack(anchor="w")
+    kt.Label(c2, text=f"{stock_qty} Units in Stock", font=("Arial", 16, "bold"),
+             bg=card_color, fg=accent_blue).pack(anchor="w", pady=5)
+    kt.Label(c2, text=f"Value: ₹{stock_val:,.2f}", font=("Arial", 11),
+             bg=card_color, fg=text_dark).pack(anchor="w")
+
+    # 🔥 TOTAL ORDERS CARD (NEW)
+    c3 = kt.Frame(cards_frame, bg=card_color, highlightbackground="#cbd5e0",
+                  highlightthickness=1, padx=20, pady=20)
+    c3.pack(side="left", expand=True, fill="both", padx=(10, 0))
+    kt.Label(c3, text="TOTAL ORDERS", font=("Arial", 9, "bold"),
+             bg=card_color, fg="#718096").pack(anchor="w")
+    kt.Label(c3, text=f"{total_orders} Orders", font=("Arial", 16, "bold"),
+             bg=card_color, fg=accent_blue).pack(anchor="w", pady=5)
+    kt.Label(c3, text=f"Date: {view_date}", font=("Arial", 11),
+             bg=card_color, fg=text_dark).pack(anchor="w")
 
     # 3. SYSTEM LOG PANEL
-    log_panel = kt.Frame(content, bg=card_color, highlightbackground="#cbd5e0", highlightthickness=1, pady=15, padx=15)
+    log_panel = kt.Frame(content, bg=card_color, highlightbackground="#cbd5e0",
+                         highlightthickness=1, pady=15, padx=15)
     log_panel.pack(fill="both", expand=True, pady=25)
-    kt.Label(log_panel, text="System Log", font=("Arial", 12, "bold"), bg=card_color, fg=text_dark).pack(anchor="w")
+
+    kt.Label(log_panel, text="System Log", font=("Arial", 12, "bold"),
+             bg=card_color, fg=text_dark).pack(anchor="w")
     kt.Label(log_panel, text=f"• Records currently shown for date: {view_date}", 
              font=("Arial", 10), bg=card_color, fg=text_dark).pack(anchor="w", pady=5)
+
 def pro_frame():
     global product_frame
     
@@ -615,16 +651,19 @@ def pro_frame():
     kt.Label(sidebar, text="Nitya Sales", font=("Arial", 16, "bold"), 
              bg=sidebar_color, fg="white", pady=25).pack()
 
+    # Inside your order_page_frame() and other page functions:
     nav_btns = [
-        ("🏠 Dashboard", lambda: [build_dashboard(), show_page(dash_frame)]),
-        ("📦 Products", view_table),
-        ("📊 Inventory", master_function),
-        ("🛒 Orders", order_page_frame),
-        ("❌ Exit", window.destroy)
-    ]
+    ("🏠 Dashboard", lambda: [build_dashboard(), show_page(dash_frame)]),
+    ("📦 Products", view_table), 
+    ("📊 Inventory", master_function),
+    ("🛒 Orders", order_page_frame), 
+    ("🧾 Billings", billing_page_frame),
+    ("📈 Reports", report_page_frame), # Add this
+    ("❌ Exit", window.destroy)
+]
 
     for text, cmd in nav_btns:
-        kt.Button(sidebar, text=text, font=("Arial", 11), bg=sidebar_color, 
+        kt.Button(sidebar, text=text, font=("Arial", 16), bg=sidebar_color, 
                   fg="white", bd=0, activebackground=accent_blue, 
                   activeforeground="white", anchor="w", padx=25,
                   command=cmd).pack(fill="x", pady=5)
@@ -700,17 +739,15 @@ def pro_frame():
 
     kt.Button(btn_frame, text="💾 Save Product", font=("Arial", 11, "bold"), bg="#38a169", fg="white", padx=20, pady=8, bd=0, command=store_data).pack(side="left", padx=(0, 15))
     kt.Button(btn_frame, text="📥 Import CSV", font=("Arial", 11), bg=accent_blue, fg="white", padx=20, pady=8, bd=0, command=upload).pack(side="left")
-def open_order_frame():
+def open_order_frame(view_id=None):
     global order_frame
-    
-    # 1. Re-create or Clear the Frame
     if not order_frame.winfo_exists():
         order_frame = kt.Frame(order_page)
         order_frame.place(relx=0, rely=0, relwidth=1, relheight=1)
 
     for widget in order_frame.winfo_children():
         widget.destroy()
-    
+
     # UI Theme Colors
     bg_color = "#f4f4f4"
     accent_green = "#2dcf58"
@@ -718,16 +755,102 @@ def open_order_frame():
     order_frame.config(bg=bg_color)
     show_page(order_frame)
 
+    editing_order_id = view_id
+
     # --- LOGIC FUNCTIONS ---
+
+    def proceed_to_billing():
+        dealer_name = dealer_cb.get()
+        items = cart_table.get_children()
+
+        if dealer_name == "Select Dealer" or not items:
+            messagebox.showerror("Error", "Please select a dealer and add items to the cart.")
+            return
+
+        try:
+            mycursor.execute("SELECT d_id FROM dealer WHERE d_name=%s", (dealer_name,))
+            res = mycursor.fetchone()
+            if not res:
+                messagebox.showerror("Error", "Dealer not found.")
+                return
+            d_id = res[0]
+
+            # Create Order
+            order_query = "INSERT INTO orders (d_id, order_date, status) VALUES (%s, %s, %s)"
+            mycursor.execute(order_query, (d_id, a, "Pending"))
+            new_order_id = mycursor.lastrowid
+
+            # Insert items + update stock + update sales (IN STOCK TABLE)
+            for item in items:
+                val = cart_table.item(item)['values']
+                p_id, _, _, p_qty, p_total = val
+                p_qty = int(p_qty)
+
+                # Insert into order_items
+                mycursor.execute("""
+                    INSERT INTO order_items (order_id, product_id, QTY, t_price)
+                    VALUES (%s, %s, %s, %s)
+                """, (new_order_id, p_id, p_qty, float(p_total)))
+
+                # 🔻 REDUCE STOCK
+                mycursor.execute("""
+                    UPDATE stock 
+                    SET b_stock = b_stock - %s
+                    WHERE product_id = %s AND s_date = %s
+                """, (p_qty, p_id, a))
+
+                # 🔺 INCREASE SALES (IN STOCK TABLE)
+                mycursor.execute("""
+                    UPDATE stock 
+                    SET sales = IFNULL(sales,0) + %s
+                    WHERE product_id = %s AND s_date = %s
+                """, (p_qty, p_id, a))
+
+            mydb.commit()
+            messagebox.showinfo("Success", f"Order {new_order_id} saved successfully!\nStock & Sales updated.")
+            order_page_frame()
+
+        except Exception as e:
+            mydb.rollback()
+            messagebox.showerror("Database Error", f"Failed to save order: {e}")
+
+    def update_existing_order():
+        try:
+            mycursor.execute("DELETE FROM order_items WHERE order_id=%s", (editing_order_id,))
+            for item in cart_table.get_children():
+                val = cart_table.item(item)['values']
+                p_id, _, _, p_qty, p_total = val
+                mycursor.execute("""
+                    INSERT INTO order_items (order_id, product_id, QTY, t_price)
+                    VALUES (%s, %s, %s, %s)
+                """, (editing_order_id, p_id, int(p_qty), float(p_total)))
+            mydb.commit()
+            messagebox.showinfo("Updated", "Order updated successfully!")
+            order_page_frame()
+        except Exception as e:
+            mydb.rollback()
+            messagebox.showerror("Error", f"Update failed: {e}")
+
+    # 🔥 SHOW ONLY PRODUCTS WITH STOCK > 0
     def update_products(event):
         selected_brand = brand_cb.get()
-        query = "SELECT product_name FROM product WHERE brand=%s"
+
         if selected_brand == "All":
-            mycursor.execute("SELECT product_name FROM product")
+            mycursor.execute("""
+                SELECT p.product_name
+                FROM product p
+                JOIN stock s ON p.product_id = s.product_id
+                WHERE s.b_stock > 0 AND s.s_date = %s
+            """, (a,))
         else:
-            mycursor.execute(query, (selected_brand,))
-        pro = mycursor.fetchall()
-        prod_cb['values'] = [j[0] for j in pro]
+            mycursor.execute("""
+                SELECT p.product_name
+                FROM product p
+                JOIN stock s ON p.product_id = s.product_id
+                WHERE p.brand = %s AND s.b_stock > 0 AND s.s_date = %s
+            """, (selected_brand, a))
+
+        prod_cb['values'] = [j[0] for j in mycursor.fetchall()]
         prod_cb.set('')
         selling_rate_var.set("")
         stok_lbl.config(text="Available Stock: -", fg="black")
@@ -739,224 +862,348 @@ def open_order_frame():
         if res:
             p_id, s_rate = res
             selling_rate_var.set(s_rate)
-            # Fetch stock for current date 'a'
+
             mycursor.execute("SELECT b_stock FROM stock WHERE product_id=%s AND s_date=%s", (p_id, a))
             stock_res = mycursor.fetchone()
             m = stock_res[0] if stock_res else 0
             stok_lbl.config(text=f"Available Stock: {m}", fg="green" if m > 0 else "red")
 
     def add_to_cart():
-        # 1. Get the current values from your input fields
         p_name = prod_cb.get()
         rate = selling_rate_var.get()
         qty = qty_entry.get()
-        
-        # 2. Validation: Ensure fields aren't empty
+
         if not p_name or not qty.isdigit():
             messagebox.showerror("Error", "Please select a product and enter a valid quantity")
             return
 
-        # 3. Calculate the total for this specific item
-        item_total = float(rate) * int(qty)
-        
-        # 4. Fetch the Product ID from the database for the selected name
         mycursor.execute("SELECT product_id FROM product WHERE product_name=%s", (p_name,))
-        result = mycursor.fetchone()
-        p_id = result[0] if result else "N/A"
-        
-        # 5. INSERT INTO THE TREEVIEW (This makes it visible in the UI)
-        cart_table.insert("", "end", values=(p_id, p_name, rate, qty, item_total))
-        
-        # 6. Update the Running Total label at the bottom
-        update_running_total()
-        
-        # 7. Clear the quantity entry for the next item
-        qty_entry.delete(0, kt.END)
+        res = mycursor.fetchone()
+        if not res:
+            messagebox.showerror("Error", "Product not found.")
+            return
+        p_id = res[0]
 
-    def remove_selected():
-        # 1. Get all selected items from the Treeview
-        selected_items = cart_table.selection()
-        
-        # 2. Check if anything is actually selected
-        if not selected_items:
-            messagebox.showwarning("Selection Error", "Please select an item from the cart to remove.")
+        # CHECK STOCK
+        mycursor.execute("SELECT b_stock FROM stock WHERE product_id=%s AND s_date=%s", (p_id, a))
+        res_stock = mycursor.fetchone()
+        if not res_stock or int(res_stock[0]) <= 0:
+            messagebox.showerror("Out of Stock", "This product is out of stock.")
             return
 
-        # 3. Delete each selected item from the table
-        for item in selected_items:
+        if int(qty) > int(res_stock[0]):
+            messagebox.showerror("Stock Error", "Entered quantity exceeds available stock.")
+            return
+
+        item_total = float(rate) * int(qty)
+
+        cart_table.insert("", "end", values=(p_id, p_name, rate, qty, item_total))
+        update_running_total()
+
+        qty_entry.delete(0, kt.END)
+        prod_cb.set('')
+        selling_rate_var.set("")
+
+    def remove_selected():
+        for item in cart_table.selection():
             cart_table.delete(item)
-            
-        # 4. Recalculate the running total immediately
         update_running_total()
 
     def update_running_total():
         total_sum = 0
-        # Iterate through every remaining row in the cart
         for item in cart_table.get_children():
-            # Index 4 corresponds to the 'Total' column in your cart
-            item_values = cart_table.item(item)['values']
-            if item_values:
-                total_sum += float(item_values[4])
-        
-        # Update the UI label variable
+            total_sum += float(cart_table.item(item)['values'][4])
         running_total_var.set(f"Running Total: ₹ {total_sum:,.2f}")
 
-    # --- UI ELEMENTS (Layout matched to image) ---
-    # Top Panel
+    # --- UI ELEMENTS ---
     top_panel = kt.Frame(order_frame, bg=bg_color, pady=10, padx=20)
     top_panel.pack(fill="x")
-    kt.Button(top_panel, text="← Back to Dashboard", command=lambda: show_page(dash_frame), font=("Arial", 10)).pack(side="left")
+    kt.Button(top_panel, text="← Back to Orders", command=order_page_frame).pack(side="left")
 
-    # Entry Form Frame
     form_frame = kt.Frame(order_frame, bg=bg_color, padx=20)
     form_frame.pack(fill="x")
 
-    # Column 1 & 2
-    kt.Label(form_frame, text="Company Filter:", font=("Arial", 14), bg=bg_color).grid(row=0, column=0, sticky="w", pady=5)
+    kt.Label(form_frame, text="Company Filter:", font=("Arial", 14), bg=bg_color)\
+        .grid(row=0, column=0, sticky="w", pady=5)
     brand_cb = ttk.Combobox(form_frame, values=["All", "Oppo", "Earthonic", "HP"], state="readonly", width=25)
     brand_cb.grid(row=0, column=1, padx=10)
     brand_cb.set("All")
 
-    kt.Label(form_frame, text="Party/Dealer Name:", font=("Arial", 14), bg=bg_color).grid(row=0, column=2, padx=10)
-    dealer_cb = ttk.Combobox(form_frame, width=30) # Ideally fetch from dealer table
+    kt.Label(form_frame, text="Party/Dealer Name:", font=("Arial", 14), bg=bg_color)\
+        .grid(row=0, column=2, padx=10)
+    dealer_cb = ttk.Combobox(form_frame, width=45, state="readonly")
     dealer_cb.grid(row=0, column=3, padx=10)
 
-    # Column 3 (Add to Cart Button)
-    kt.Button(form_frame, text="+ Add to Cart", bg=accent_green, fg="white", font=("Arial", 14, "bold"), 
-              command=add_to_cart, padx=20, pady=10).grid(row=0, column=4, rowspan=2, padx=20)
+    mycursor.execute("SELECT d_name FROM dealer")
+    dealer_cb['values'] = [row[0] for row in mycursor.fetchall()]
+    dealer_cb.set("Select Dealer")
 
-    # Row 2
-    kt.Label(form_frame, text="Product Name:", font=("Arial", 14), bg=bg_color).grid(row=1, column=0, sticky="w", pady=5)
-    prod_cb = ttk.Combobox(form_frame, state="readonly", width=25)
+    add_cart_btn = kt.Button(form_frame, text="+ Add to Cart", bg=accent_green, fg="white",
+                             font=("Arial", 14, "bold"), command=add_to_cart, padx=20, pady=10)
+    add_cart_btn.grid(row=0, column=4, rowspan=2, padx=20)
+
+    kt.Label(form_frame, text="Product Name:", font=("Arial", 14), bg=bg_color)\
+        .grid(row=1, column=0, sticky="w", pady=5)
+    prod_cb = ttk.Combobox(form_frame, state="readonly", width=70)
     prod_cb.grid(row=1, column=1, padx=10)
 
     stok_lbl = kt.Label(form_frame, text="Available Stock: -", font=("Arial", 14, "bold"), bg=bg_color)
     stok_lbl.grid(row=1, column=2, columnspan=2, sticky="w", padx=10)
 
-    # Row 3
     selling_rate_var = kt.StringVar()
-    kt.Label(form_frame, text="Selling Rate (₹):", font=("Arial", 14), bg=bg_color).grid(row=2, column=0, sticky="w", pady=10)
-    kt.Entry(form_frame, textvariable=selling_rate_var, font=("Arial", 12), width=27).grid(row=2, column=1, padx=10)
+    kt.Label(form_frame, text="Selling Rate (₹):", font=("Arial", 14), bg=bg_color)\
+        .grid(row=2, column=0, sticky="w", pady=10)
+    kt.Entry(form_frame, textvariable=selling_rate_var, font=("Arial", 12), width=27)\
+        .grid(row=2, column=1, padx=10)
 
-    kt.Label(form_frame, text="Quantity:", font=("Arial", 14), bg=bg_color).grid(row=2, column=2, sticky="e")
+    kt.Label(form_frame, text="Quantity:", font=("Arial", 14), bg=bg_color)\
+        .grid(row=2, column=2, sticky="e")
     qty_entry = kt.Entry(form_frame, font=("Arial", 12), width=20)
     qty_entry.grid(row=2, column=3, padx=10, sticky="w")
 
-    # --- CART TABLE ---
     kt.Label(order_frame, text="Current Order Cart", font=("Arial", 16, "bold"), bg=bg_color).pack(pady=(20, 5))
-    
-    cart_container = kt.Frame(order_frame, bg="white", bd=1, relief="solid")
-    cart_container.pack(fill="both", expand=True, padx=20, pady=5)
 
     columns = ("id", "name", "rate", "qty", "total")
-    cart_table = ttk.Treeview(cart_container, columns=columns, show="headings", height=10)
-    
-    cart_table.heading("id", text="ID")
-    cart_table.heading("name", text="Product Name")
-    cart_table.heading("rate", text="Rate")
-    cart_table.heading("qty", text="Qty")
-    cart_table.heading("total", text="Total")
-    
-    cart_table.column("id", width=100, anchor="center")
+    cart_table = ttk.Treeview(order_frame, columns=columns, show="headings", height=10)
+    for col in columns:
+        cart_table.heading(col, text=col.upper())
+        cart_table.column(col, anchor="center")
     cart_table.column("name", width=400, anchor="w")
-    cart_table.pack(fill="both", expand=True)
+    cart_table.pack(fill="both", expand=True, padx=20, pady=5)
 
-    # --- FOOTER ---
     footer_frame = kt.Frame(order_frame, bg=bg_color, padx=20, pady=10)
     footer_frame.pack(fill="x")
 
-    kt.Button(footer_frame, text="✘ Remove Selected", bg="#d9534f", fg="white", font=("Arial", 10, "bold"), 
-              command=remove_selected).pack(side="left")
+    kt.Button(footer_frame, text="✘ Remove Selected", bg="#d9534f", fg="white",
+              font=("Arial", 10, "bold"), command=remove_selected).pack(side="left")
 
     running_total_var = kt.StringVar(value="Running Total: ₹ 0")
-    kt.Label(footer_frame, textvariable=running_total_var, font=("Arial", 16, "bold"), bg=bg_color).pack(side="right", padx=10)
-    
-    kt.Button(footer_frame, text="➡ Proceed to Billing", bg=accent_blue, fg="white", font=("Arial", 14, "bold"), 
-              padx=20, pady=10).pack(side="right", padx=20)
+    kt.Label(footer_frame, textvariable=running_total_var,
+             font=("Arial", 16, "bold"), bg=bg_color).pack(side="right", padx=10)
 
-    # --- BINDINGS ---
+    billing_btn = kt.Button(footer_frame, text="🛒 Create Order", bg="#38a169", fg="white",
+                            font=("Arial", 14, "bold"), command=proceed_to_billing,
+                            padx=25, pady=10)
+    billing_btn.pack(side="right", padx=20)
+
     brand_cb.bind("<<ComboboxSelected>>", update_products)
     prod_cb.bind("<<ComboboxSelected>>", fetch_details)
+
+
 def order_page_frame():
-    # 1. Clear previous content
     for widget in order_page.winfo_children():
         widget.destroy()
     
     # --- THEME COLORS ---
-    bg_main = "#f0f4f8"       # Light blue-grey background
-    sidebar_color = "#1a365d" # Dark navy blue
-    card_color = "#ffffff"    # White card for the table
-    accent_blue = "#2b6cb0"   # Medium blue
-    text_dark = "#2d3748"     # Dark grey
+    bg_main, sidebar_color, card_color = "#f0f4f8", "#1a365d", "#ffffff"
+    accent_blue, text_dark = "#2b6cb0", "#2d3748"
 
     order_page.config(bg=bg_main)
     show_page(order_page)
 
-    # 1. SIDEBAR (Consistent with Dashboard)
+    # 1. SIDEBAR
     sidebar = kt.Frame(order_page, bg=sidebar_color, width=220)
     sidebar.pack(side="left", fill="y")
-
-    kt.Label(sidebar, text="Nitya Sales", font=("Arial", 16, "bold"), 
+    kt.Label(sidebar, text="Nitya Sales", font=("Arial", 16, "bold"),
              bg=sidebar_color, fg="white", pady=25).pack()
 
     nav_btns = [
-        ("🏠 Dashboard", lambda: [build_dashboard(), show_page(dash_frame)]),
-        ("📦 Products", view_table),
-        ("📊 Inventory", master_function),
-        ("🛒 Orders", order_page_frame),
-        ("❌ Exit", window.destroy)
-    ]
-
+    ("🏠 Dashboard", lambda: [build_dashboard(), show_page(dash_frame)]),
+    ("📦 Products", view_table), 
+    ("📊 Inventory", master_function),
+    ("🛒 Orders", order_page_frame), 
+    ("🧾 Billings", billing_page_frame),
+    ("📈 Reports", report_page_frame), # Add this
+    ("❌ Exit", window.destroy)
+]
     for text, cmd in nav_btns:
-        kt.Button(sidebar, text=text, font=("Arial", 11), bg=sidebar_color, 
-                  fg="white", bd=0, activebackground=accent_blue, 
-                  activeforeground="white", anchor="w", padx=25,
+        kt.Button(sidebar, text=text, font=("Arial", 16), bg=sidebar_color,
+                  fg="white", bd=0, anchor="w", padx=25,
                   command=cmd).pack(fill="x", pady=5)
 
     # 2. MAIN CONTENT AREA
     content = kt.Frame(order_page, bg=bg_main, padx=30, pady=25)
     content.pack(side="right", fill="both", expand=True)
 
-    # Header Row
     header_row = kt.Frame(content, bg=bg_main)
     header_row.pack(fill="x", pady=(0, 20))
 
-    kt.Label(header_row, text="Order History", font=("Arial", 22, "bold"), 
+    kt.Label(header_row, text="Order History", font=("Arial", 22, "bold"),
              bg=bg_main, fg=text_dark).pack(side="left")
 
-    # "Add New" Button styled like your reference image
-    kt.Button(header_row, text="+ Create New Order", font=("Arial", 12, "bold"), 
-              bg="#38a169", fg="white", padx=15, pady=8, bd=0,
-              command=open_order_frame).pack(side="right")
+    # --- ACTION BUTTONS ---
 
-    # 3. ORDERS TABLE (Inside a white card)
-    table_card = kt.Frame(content, bg=card_color, highlightbackground="#cbd5e0", highlightthickness=1)
+    def view_selected():
+        selected = tree.selection()
+        if not selected:
+            messagebox.showwarning("Selection", "Please select an order to view.")
+            return
+        order_id = tree.item(selected[0])['values'][0]
+        open_order_frame(view_id=order_id)
+
+    kt.Button(header_row, text="+ New Order", font=("Arial", 12, "bold"),
+              bg="#38a169", fg="white", padx=15, pady=8,
+              bd=0, command=open_order_frame).pack(side="right")
+    
+    kt.Button(header_row, text="👁 View Details", font=("Arial", 12, "bold"),
+              bg=accent_blue, fg="white", padx=15, pady=8,
+              bd=0, command=view_selected).pack(side="right", padx=10)
+
+    # 3. ORDERS TABLE
+    table_card = kt.Frame(content, bg=card_color,
+                          highlightbackground="#cbd5e0", highlightthickness=1)
     table_card.pack(fill="both", expand=True)
 
     cols = ("order_id", "date", "party", "total_items", "total_amt")
     tree = ttk.Treeview(table_card, columns=cols, show="headings")
-    
-    tree.heading("order_id", text="Order ID")
-    tree.heading("date", text="Date")
-    tree.heading("party", text="Party Name")
-    tree.heading("total_items", text="Items")
-    tree.heading("total_amt", text="Total Amount")
 
-    # Configure Column Widths
-    tree.column("order_id", width=100, anchor="center")
-    tree.column("party", width=300, anchor="w")
+    headings = ["Order ID", "Date", "Party Name", "Total Items", "Total Amount"]
+    for col, head in zip(cols, headings):
+        tree.heading(col, text=head)
+        tree.column(col, anchor="center")
     
+    tree.column("party", width=250, anchor="w")
     tree.pack(fill="both", expand=True, padx=10, pady=10)
 
     # --- LOAD DATA LOGIC ---
     try:
-        # Note: You will need an 'orders' table in your DB for this to populate
-        mycursor.execute("SELECT order_id, date, party_name, items_qty, amount FROM orders ORDER BY date DESC")
+        # Show all PENDING orders
+        query = """
+        SELECT o.order_id, o.order_date, d.d_name,
+               IFNULL(SUM(oi.QTY),0),
+               IFNULL(SUM(oi.t_price),0)
+        FROM orders o
+        JOIN dealer d ON o.d_id = d.d_id
+        LEFT JOIN order_items oi ON o.order_id = oi.order_id
+        WHERE o.status = 'Pending'
+        GROUP BY o.order_id
+        ORDER BY o.order_id DESC
+        """
+       
+        mycursor.execute(query)
         for row in mycursor.fetchall():
             tree.insert("", "end", values=row)
-    except:
-        # If table doesn't exist yet, show a placeholder
-        tree.insert("", "end", values=("Example-001", a, "Tech Distributors Ltd.", 5, "₹ 1,80,000"))
+
+    except Exception as e:
+        print(f"Error loading history: {e}")
+
+def billing_page_frame():
+    # Clear the page
+    for widget in order_page.winfo_children():
+        widget.destroy()
+    
+    bg_main, sidebar_color, card_color = "#f0f4f8", "#1a365d", "#ffffff"
+    accent_blue, text_dark = "#2b6cb0", "#2d3748"
+    order_page.config(bg=bg_main)
+    show_page(order_page)
+
+    # 1. SIDEBAR
+    sidebar = kt.Frame(order_page, bg=sidebar_color, width=220)
+    sidebar.pack(side="left", fill="y")
+    kt.Label(sidebar, text="Nitya Sales", font=("Arial", 16, "bold"),
+             bg=sidebar_color, fg="white", pady=25).pack()
+    
+    nav_btns = [
+    ("🏠 Dashboard", lambda: [build_dashboard(), show_page(dash_frame)]),
+    ("📦 Products", view_table), 
+    ("📊 Inventory", master_function),
+    ("🛒 Orders", order_page_frame), 
+    ("🧾 Billings", billing_page_frame),
+    ("📈 Reports", report_page_frame), # Add this
+    ("❌ Exit", window.destroy)
+]
+    for text, cmd in nav_btns:
+        kt.Button(sidebar, text=text, font=("Arial", 16),
+                  bg=sidebar_color, fg="white", bd=0,
+                  anchor="w", padx=25, command=cmd).pack(fill="x", pady=5)
+
+    # 2. MAIN CONTENT
+    content = kt.Frame(order_page, bg=bg_main, padx=30, pady=25)
+    content.pack(side="right", fill="both", expand=True)
+
+    header_row = kt.Frame(content, bg=bg_main)
+    header_row.pack(fill="x", pady=(0, 20))
+    kt.Label(header_row, text="Billing Management", font=("Arial", 22, "bold"),
+             bg=bg_main, fg=text_dark).pack(side="left")
+
+    # --- BILLING LOGIC ---
+    def generate_bill():
+        selected = tree.selection()
+        if not selected:
+            messagebox.showwarning("Selection", "Please select an order to bill.")
+            return
+        
+        order_values = tree.item(selected[0])['values']
+        order_id = order_values[0]
+        total_amt = order_values[4]
+
+        invoice_no = simpledialog.askstring(
+            "Invoice Number",
+            f"Enter Invoice Number for Order #{order_id}:"
+        )
+        
+        if invoice_no:
+            try:
+                # Insert invoice
+                query = "INSERT INTO invoices (order_id, invoice_no, t_amount) VALUES (%s, %s, %s)"
+                mycursor.execute(query, (order_id, invoice_no, total_amt))
+
+                # 🔴 FIX: Update order status correctly
+                q2 = "UPDATE orders SET status='Completed' WHERE order_id=%s"
+                mycursor.execute(q2, (order_id,))
+
+                mydb.commit()
+
+                messagebox.showinfo("Success", f"Invoice {invoice_no} saved successfully!")
+                
+                # Refresh billing page so billed order disappears
+                billing_page_frame()
+
+            except Exception as e:
+                mydb.rollback()
+                messagebox.showerror("Database Error", f"Could not save invoice: {e}")
+
+    # ACTION BUTTON
+    kt.Button(header_row, text="🧾 Generate Bill", font=("Arial", 12, "bold"),
+              bg="#ed8936", fg="white", padx=15, pady=8,
+              bd=0, command=generate_bill).pack(side="right")
+
+    # 3. TABLE
+    table_card = kt.Frame(content, bg=card_color,
+                          highlightbackground="#cbd5e0", highlightthickness=1)
+    table_card.pack(fill="both", expand=True)
+
+    cols = ("order_id", "date", "party", "total_items", "total_amt")
+    tree = ttk.Treeview(table_card, columns=cols, show="headings")
+
+    headings = ["Order ID", "Date", "Party Name", "Total Items", "Total Amount"]
+    for col, head in zip(cols, headings):
+        tree.heading(col, text=head)
+        tree.column(col, anchor="center")
+
+    tree.column("party", width=250, anchor="w")
+    tree.pack(fill="both", expand=True, padx=10, pady=10)
+
+    # --- LOAD DATA (ONLY PENDING ORDERS) ---
+    try:
+        query = """
+            SELECT o.order_id, o.order_date, d.d_name,
+                   IFNULL(SUM(oi.QTY),0),
+                   IFNULL(SUM(oi.t_price),0)
+            FROM orders o
+            JOIN dealer d ON o.d_id = d.d_id
+            LEFT JOIN order_items oi ON o.order_id = oi.order_id
+            WHERE o.status = 'Pending'
+            GROUP BY o.order_id
+            ORDER BY o.order_id DESC
+        """
+        mycursor.execute(query)
+        for row in mycursor.fetchall():
+            tree.insert("", "end", values=row)
+
+    except Exception as e:
+        print(f"Error loading billing data: {e}")
+
 
 def customer():
     def stre():
@@ -967,19 +1214,15 @@ def customer():
 
         if not file_path:
             return
-        qry='insert into dealer (d_id,d_name,address,c_person,c_no,GST,FOS,delivery_p) values(%s,%s,%s,%s,%s,%s,%s,%s)'
+        qry='insert into dealer (d_id,d_name,FOS) values(%s,%s,%s)'
         with open(file_path, 'r') as csvfile:
             reader= c.DictReader(csvfile)
             for row in reader:
                 values = (
                     row['d_id'],
                     row['d_name'],
-                    row['address'],
-                    row['c_person'],
-                    row['c_no'],
-                    row['GST'],
                     row['FOS'],
-                    row['delivery_p']
+                    
                 )
                 mycursor.execute(qry, values)
         mydb.commit()
@@ -990,7 +1233,130 @@ def customer():
     kt.Button(cust_more, text="← Back to Dashboard", 
               command=lambda: show_page(dash_frame), # Just raise the dashboard
               font=("Arial", 10, "bold"), bg="lightgrey").place(x=10,y=100)
+def report_page_frame():
+    # 1. Clear previous widgets
+    for widget in order_page.winfo_children():
+        widget.destroy()
     
+    # --- THEME COLORS (Consistent with your UI) ---
+    bg_main, sidebar_color, card_color = "#f0f4f8", "#1a365d", "#ffffff"
+    accent_blue, text_dark = "#2b6cb0", "#2d3748"
+    order_page.config(bg=bg_main)
+    show_page(order_page)
+
+    # 1. SIDEBAR NAVIGATION
+    sidebar = kt.Frame(order_page, bg=sidebar_color, width=220)
+    sidebar.pack(side="left", fill="y")
+    kt.Label(sidebar, text="Nitya Sales", font=("Arial", 16, "bold"), 
+             bg=sidebar_color, fg="white", pady=25).pack()
+
+    nav_btns = [
+        ("🏠 Dashboard", lambda: [build_dashboard(), show_page(dash_frame)]),
+        ("📦 Products", view_table), 
+        ("📊 Inventory", master_function),
+        ("🛒 Orders", order_page_frame), 
+        ("🧾 Billings", billing_page_frame),
+        ("📈 Reports", report_page_frame),
+        ("❌ Exit", window.destroy)
+    ]
+    for text, cmd in nav_btns:
+        kt.Button(sidebar, text=text, font=("Arial", 16), bg=sidebar_color, 
+                  fg="white", bd=0, anchor="w", padx=25, command=cmd).pack(fill="x", pady=5)
+
+    # 2. MAIN CONTENT AREA
+    content = kt.Frame(order_page, bg=bg_main, padx=30, pady=25)
+    content.pack(side="right", fill="both", expand=True)
+
+    header_row = kt.Frame(content, bg=bg_main)
+    header_row.pack(fill="x", pady=(0, 20))
+    kt.Label(header_row, text="Sales & Profit Reports", font=("Arial", 22, "bold"), 
+             bg=bg_main, fg=text_dark).pack(side="left")
+
+    # 3. FILTER SECTION
+    filter_card = kt.Frame(content, bg=card_color, padx=15, pady=15, 
+                           highlightbackground="#cbd5e0", highlightthickness=1)
+    filter_card.pack(fill="x", pady=(0, 20))
+
+    kt.Label(filter_card, text="Start Date (YYYY-MM-DD):", bg=card_color).pack(side="left", padx=5)
+    start_date_ent = kt.Entry(filter_card, width=12)
+    start_date_ent.insert(0, str(a))
+    start_date_ent.pack(side="left", padx=5)
+
+    kt.Label(filter_card, text="End Date:", bg=card_color).pack(side="left", padx=5)
+    end_date_ent = kt.Entry(filter_card, width=12)
+    end_date_ent.insert(0, str(a))
+    end_date_ent.pack(side="left", padx=5)
+
+    # 4. KPI CARDS (Summary Numbers)
+    kpi_frame = kt.Frame(content, bg=bg_main)
+    kpi_frame.pack(fill="x", pady=10)
+
+    def create_kpi_card(parent, title, value, color):
+        card = kt.Frame(parent, bg=card_color, highlightbackground="#cbd5e0", highlightthickness=1, padx=20, pady=15)
+        card.pack(side="left", expand=True, fill="both", padx=5)
+        kt.Label(card, text=title, font=("Arial", 10, "bold"), bg=card_color, fg="#718096").pack(anchor="w")
+        lbl = kt.Label(card, text=value, font=("Arial", 18, "bold"), bg=card_color, fg=color)
+        lbl.pack(anchor="w", pady=5)
+        return lbl
+
+    rev_lbl = create_kpi_card(kpi_frame, "TOTAL REVENUE", "₹ 0.00", accent_blue)
+    prof_lbl = create_kpi_card(kpi_frame, "EST. PROFIT", "₹ 0.00", "#38a169")
+    ord_lbl = create_kpi_card(kpi_frame, "ORDERS COUNT", "0", text_dark)
+
+    # 5. DATA TABLE
+    table_card = kt.Frame(content, bg=card_color, highlightbackground="#cbd5e0", highlightthickness=1)
+    table_card.pack(fill="both", expand=True, pady=10)
+
+    cols = ("date", "product", "qty", "revenue", "profit")
+    tree = ttk.Treeview(table_card, columns=cols, show="headings")
+    for col in cols:
+        tree.heading(col, text=col.upper())
+        tree.column(col, anchor="center")
+    tree.pack(fill="both", expand=True, padx=10, pady=10)
+
+    # --- REPORT LOGIC ---
+    def generate_report():
+        sd = start_date_ent.get()
+        ed = end_date_ent.get()
+        
+        for i in tree.get_children(): tree.delete(i)
+
+        try:
+            # Query for detailed item breakdown and profit calculation
+            query = """
+                SELECT o.order_date, p.product_name, oi.QTY, oi.t_price,
+                       (oi.t_price - (oi.QTY * p.p_rate)) as profit
+                FROM order_items oi
+                JOIN orders o ON oi.order_id = o.order_id
+                JOIN product p ON oi.product_id = p.product_id
+                WHERE o.order_date BETWEEN %s AND %s
+                ORDER BY o.order_date DESC
+            """
+            mycursor.execute(query, (sd, ed))
+            rows = mycursor.fetchall()
+
+            total_rev = 0
+            total_prof = 0
+            
+            for row in rows:
+                tree.insert("", "end", values=row)
+                total_rev += float(row[3])
+                total_prof += float(row[4])
+
+            # Update KPI Cards
+            rev_lbl.config(text=f"₹ {total_rev:,.2f}")
+            prof_lbl.config(text=f"₹ {total_prof:,.2f}")
+            
+            mycursor.execute("SELECT COUNT(*) FROM orders WHERE order_date BETWEEN %s AND %s", (sd, ed))
+            ord_lbl.config(text=str(mycursor.fetchone()[0]))
+
+        except Exception as e:
+            messagebox.showerror("Report Error", f"Could not generate report: {e}")
+
+    kt.Button(filter_card, text="📊 Generate Report", bg=accent_blue, fg="white", 
+              command=generate_report, padx=15).pack(side="left", padx=20)
+    
+    generate_report() # Auto-load today's report
 def master_function():
     change_data()
     view_table_stock()  
